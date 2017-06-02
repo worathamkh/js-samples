@@ -205,6 +205,9 @@
 
         return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
       }
+      function veq(u, v) {
+        return u.lat === v.lat && u.lng === v.lng;
+      }
       function updateData(newPathGiven, id) {
         var newPath = {
           id: id,
@@ -215,6 +218,7 @@
             lat: v.lat(),
             lng: v.lng()
           };
+          u.id = (u.lat.toString()+u.lng.toString()).hashCode();
           newPath.run.push(u);
         });
         polylines.forEach(function(p) {
@@ -243,32 +247,25 @@
             for (var j = 0; j < maybeVertices.length; j++) {
               var u = maybeVertices[j];
               // console.log('u =', u);
-              var d = distance(u, v);
-              if (d < 0.0001) {
+              // var d = distance(u, v);
+              // if (d < 0.0001) {
+              if (veq(u, v)) {
                 hit = true;
                 console.log('hit!');
                 break;
               }
             }
             if (!hit) {
-              var w = {
-                id: v.id,
-                lat: v.lat,
-                lng: v.lng,
-                adjPaths: [],
-                adjVertices: []
-              };
-              
               maybeVertices.push(v);
             }
           }
         });
-        vertices = maybeVertices;
         paths = [];
         polylines.forEach(function(p) {
           for (var i = 0; i < p.run.length-1; i++) {
-            var run = [p.run[i], p.run[i+1]];
-            var id = JSON.stringify(run).hashCode();
+            var u = p.run[i], v = p.run[i+1];
+            var run = [u, v];
+            var id = (u.id.toString() + v.id.toString()).hashCode();
             var path = {
               id: id,
               run: run
@@ -276,9 +273,29 @@
             paths.push(path);
           }
         });
-        console.log('vertices =', JSON.stringify(vertices));
-        console.log('paths = ', JSON.stringify(paths));
-        console.log('polylines =', JSON.stringify(polylines));
+        maybeVertices.map(function(v) {
+          v.adjPaths = [];
+          v.adjVertices = [];
+          paths.forEach(function(p) {
+            if (veq(v, p.run[0])) {
+              v.adjVertices.push(p.run[1].id);
+              v.adjPaths.push(p.id);
+            } else if (veq(v, p.run[1])){
+              v.adjVertices.push(p.run[0].id);
+              v.adjPaths.push(p.id);
+            }
+          });
+          return v;
+        });
+        vertices = maybeVertices;
+        // console.log('vertices =', JSON.stringify(vertices));
+        // console.log('paths = ', JSON.stringify(paths));
+        // console.log('polylines =', JSON.stringify(polylines));
+        console.log(JSON.stringify({
+          vertices: vertices,
+          paths: paths,
+          polylines: polylines
+        }));
       }
       function initialize() {
         var map = new google.maps.Map(document.getElementById('map'), {
