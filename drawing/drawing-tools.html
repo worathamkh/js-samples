@@ -7,7 +7,7 @@
     <script type="text/javascript"
       src="http://maps.google.com/maps/api/js?sensor=false&libraries=drawing"></script>
     <script type="text/javascript"
-      src="lodash.core.min.js"></script>
+      src="lodash.min.js"></script>
     <style type="text/css">
       #map, html, body {
         padding: 0;
@@ -64,10 +64,10 @@
       function deleteSelectedShape() {
         if (selectedShape) {
           var id = JSON.stringify(selectedShape.getPath().getArray()).hashCode();
-          var i = paths.findIndex(function(p) {
+          var i = polylines.findIndex(function(p) {
             return p.id === id;
           });
-          paths.splice(i, 1);
+          polylines.splice(i, 1);
           selectedShape.setMap(null);
         }
       }
@@ -192,11 +192,18 @@
       	}
       	return hash;
       }
-      // var vertices = [];
+      var vertices = [];
       // var edges = [];
+      var polylines = [];
       var paths = [];
       function distance(u, v) {
-        return Math.sqrt(Math.pow(u.lat-v.lat, 2) + Math.pow(u.lng-v.lng, 2));
+        var p = 0.017453292519943295;    // Math.PI / 180
+        var c = Math.cos;
+        var a = 0.5 - c((v.lat - u.lat) * p)/2 +
+                c(u.lat * p) * c(v.lat * p) *
+                (1 - c((v.lng - u.lng) * p))/2;
+
+        return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
       }
       function updateData(newPathGiven, id) {
         var newPath = {
@@ -210,14 +217,14 @@
           };
           newPath.run.push(u);
         });
-        paths.forEach(function(p) {
+        polylines.forEach(function(p) {
           newPath.run.map(function(u) {
             p.run.forEach(function(v) {
               // console.log(JSON.stringify(u), 'vs', JSON.stringify(v));
               var d = distance(u, v);
               // console.log(d);
               if (d < 0.0001) {
-                console.log('d(u,v) = ', d);
+                console.log('same vertex with d(u,v) = ', d);
                 u.lat = v.lat;
                 u.lng = v.lng;
               }
@@ -225,10 +232,54 @@
             return u;
           });
         });
-        paths.push(newPath);
-        console.log(JSON.stringify(paths));
+        polylines.push(newPath);
+        var maybeVertices = [];
+        polylines.forEach(function(p) {
+          var hit = false;
+          for (var i = 0; i < p.run.length; i++) {
+            var v = p.run[i];
+            // console.log('v =', v);
+            // console.log(JSON.stringify(maybeVertices));
+            for (var j = 0; j < maybeVertices.length; j++) {
+              var u = maybeVertices[j];
+              // console.log('u =', u);
+              var d = distance(u, v);
+              if (d < 0.0001) {
+                hit = true;
+                console.log('hit!');
+                break;
+              }
+            }
+            if (!hit) {
+              var w = {
+                id: v.id,
+                lat: v.lat,
+                lng: v.lng,
+                adjPaths: [],
+                adjVertices: []
+              };
+              
+              maybeVertices.push(v);
+            }
+          }
+        });
+        vertices = maybeVertices;
+        paths = [];
+        polylines.forEach(function(p) {
+          for (var i = 0; i < p.run.length-1; i++) {
+            var run = [p.run[i], p.run[i+1]];
+            var id = JSON.stringify(run).hashCode();
+            var path = {
+              id: id,
+              run: run
+            };
+            paths.push(path);
+          }
+        });
+        console.log('vertices =', JSON.stringify(vertices));
+        console.log('paths = ', JSON.stringify(paths));
+        console.log('polylines =', JSON.stringify(polylines));
       }
-
       function initialize() {
         var map = new google.maps.Map(document.getElementById('map'), {
           zoom: 18,
@@ -277,10 +328,10 @@
             });
             google.maps.event.addListener(newShape, "mouseup", function(e){
               // printVertices(newShape.getPath().getArray());
-              var i = paths.findIndex(function(p) {
+              var i = polylines.findIndex(function(p) {
                 return p.id === id;
               });
-              paths.splice(i, 1);
+              polylines.splice(i, 1);
               updateData(newShape.getPath().getArray(), id);
             });
             setSelection(newShape);
