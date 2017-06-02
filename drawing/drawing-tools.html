@@ -6,6 +6,8 @@
     <title>Drawing Tools</title>
     <script type="text/javascript"
       src="http://maps.google.com/maps/api/js?sensor=false&libraries=drawing"></script>
+    <script type="text/javascript"
+      src="lodash.core.min.js"></script>
     <style type="text/css">
       #map, html, body {
         padding: 0;
@@ -113,21 +115,76 @@
         return button;
       }
 
-       function buildColorPalette() {
-         var colorPalette = document.getElementById('color-palette');
-         for (var i = 0; i < colors.length; ++i) {
-           var currColor = colors[i];
-           var colorButton = makeColorButton(currColor);
-           colorPalette.appendChild(colorButton);
-           colorButtons[currColor] = colorButton;
-         }
-         selectColor(colors[0]);
-       }
+      function buildColorPalette() {
+        var colorPalette = document.getElementById('color-palette');
+        for (var i = 0; i < colors.length; ++i) {
+          var currColor = colors[i];
+          var colorButton = makeColorButton(currColor);
+          colorPalette.appendChild(colorButton);
+          colorButtons[currColor] = colorButton;
+        }
+        selectColor(colors[0]);
+      }
+      Array.prototype.pairs = function (func) {
+          var pairs = [];
+          for (var i = 0; i < this.length - 1; i++) {
+              for (var j = i; j < this.length - 1; j++) {
+                  func([this[i], this[j+1]]);
+              }
+          }
+      }
+      function vtx2str(v) {
+        return '(' + v[0] + ', ' + v[1] + ')';
+      }
+      function printVertices(P) {
+        var V = [];
+        console.log("START ------------");
+        P.forEach(function(v, i, self) {
+          var lat = v.lat(), lng = v.lng();
+          var to = [];
+          if (i > 0) {
+            to.push(i-1);
+          }
+          if (i < self.length-1) {
+            to.push(i+1);
+          }
+          var u = {
+            lat: lat,
+            lng: lng,
+            to: to
+          };
+          V.push(u);
+          console.log(JSON.stringify(u));
+        });
+        console.log("END --------------");
+        V.forEach(function(v, i, self) {
+          vertices.forEach(function(u, j, self) {
+            if (
+          });
+        });
+        var E = [];
+        //for (var i = 0; i < V.length-1; i++) {
+        //  E.push([V[i], V[i+1]]);
+        //  console.log(vtx2str(V[i]), ' <-> ', vtx2str(V[i+1]));
+        //}
+        //var dmin = 999;
+        //paths.pairs(function (pair) {
+        //  var d = Math.sqrt(Math.pow(pair[0].lat()-pair[1].lat(), 2), Math.pow(pair[0].lng()-pair[1].lng(), 2));
+        //  console.log('d = ' + d + ' vs dmin = ' + dmin);
+        //  if (d < dmin) {
+        //    dmin = d;
+        //  }
+        //});
+        //console.log('dmin = ' + dmin);
+      }
+
+      var vertices = [];
+      var edges = [];
 
       function initialize() {
         var map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 10,
-          center: new google.maps.LatLng(22.344, 114.048),
+          zoom: 18,
+          center: new google.maps.LatLng(18.7964991, 98.9526191),
           mapTypeId: google.maps.MapTypeId.ROADMAP,
           disableDefaultUI: true,
           zoomControl: true
@@ -155,6 +212,7 @@
         });
 
         google.maps.event.addListener(drawingManager, 'overlaycomplete', function(e) {
+            printVertices(e.overlay.getPath().getArray());
             if (e.type != google.maps.drawing.OverlayType.MARKER) {
             // Switch back to non-drawing mode after drawing a shape.
             drawingManager.setDrawingMode(null);
@@ -165,6 +223,9 @@
             newShape.type = e.type;
             google.maps.event.addListener(newShape, 'click', function() {
               setSelection(newShape);
+                google.maps.event.addListener(newShape, "mouseup", function(e){
+                    printVertices(newShape.getPath().getArray());
+                });
             });
             setSelection(newShape);
           }
