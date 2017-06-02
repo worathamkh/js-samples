@@ -1,0 +1,22 @@
+{
+  "edges" : [ null, {
+    "from" : 1,
+    "safety" : 0,
+    "to" : 2
+  }, {
+    "from" : 2,
+    "safety" : 0,
+    "to" : 3
+  } ],
+  "message" : "Send from App",
+  "nodes" : [ null, {
+    "latitude" : 18.796579,
+    "longitude" : 98.952621
+  }, {
+    "latitude" : 18.79647,
+    "longitude" : 98.952616
+  }, {
+    "latitude" : 18.796366,
+    "longitude" : 98.952611
+  } ]
+}

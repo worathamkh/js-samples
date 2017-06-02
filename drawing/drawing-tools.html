@@ -63,6 +63,11 @@
 
       function deleteSelectedShape() {
         if (selectedShape) {
+          var id = JSON.stringify(selectedShape.getPath().getArray()).hashCode();
+          var i = paths.findIndex(function(p) {
+            return p.id === id;
+          });
+          paths.splice(i, 1);
           selectedShape.setMap(null);
         }
       }
@@ -136,50 +141,93 @@
       function vtx2str(v) {
         return '(' + v[0] + ', ' + v[1] + ')';
       }
-      function printVertices(P) {
-        var V = [];
-        console.log("START ------------");
-        P.forEach(function(v, i, self) {
-          var lat = v.lat(), lng = v.lng();
-          var to = [];
-          if (i > 0) {
-            to.push(i-1);
-          }
-          if (i < self.length-1) {
-            to.push(i+1);
-          }
+      // function printVertices(P) {
+      //   var V = [];
+      //   console.log("START ------------");
+      //   P.forEach(function(v, i, self) {
+      //     var lat = v.lat(), lng = v.lng();
+      //     var to = [];
+      //     if (i > 0) {
+      //       to.push(i-1);
+      //     }
+      //     if (i < self.length-1) {
+      //       to.push(i+1);
+      //     }
+      //     var u = {
+      //       lat: lat,
+      //       lng: lng,
+      //       to: to
+      //     };
+      //     V.push(u);
+      //     console.log(JSON.stringify(u));
+      //   });
+      //   console.log("END --------------");
+      //   V.forEach(function(v, i, self) {
+      //     vertices.forEach(function(u, j, self) {
+      //       if (
+      //     });
+      //   });
+      //   var E = [];
+      //   //for (var i = 0; i < V.length-1; i++) {
+      //   //  E.push([V[i], V[i+1]]);
+      //   //  console.log(vtx2str(V[i]), ' <-> ', vtx2str(V[i+1]));
+      //   //}
+      //   //var dmin = 999;
+      //   //paths.pairs(function (pair) {
+      //   //  var d = Math.sqrt(Math.pow(pair[0].lat()-pair[1].lat(), 2), Math.pow(pair[0].lng()-pair[1].lng(), 2));
+      //   //  console.log('d = ' + d + ' vs dmin = ' + dmin);
+      //   //  if (d < dmin) {
+      //   //    dmin = d;
+      //   //  }
+      //   //});
+      //   //console.log('dmin = ' + dmin);
+      // }
+      String.prototype.hashCode = function(){
+      	var hash = 0;
+      	if (this.length == 0) return hash;
+      	for (i = 0; i < this.length; i++) {
+      		char = this.charCodeAt(i);
+      		hash = ((hash<<5)-hash)+char;
+      		hash = hash & hash; // Convert to 32bit integer
+      	}
+      	return hash;
+      }
+      // var vertices = [];
+      // var edges = [];
+      var paths = [];
+      function distance(u, v) {
+        return Math.sqrt(Math.pow(u.lat-v.lat, 2) + Math.pow(u.lng-v.lng, 2));
+      }
+      function updateData(newPathGiven, id) {
+        var newPath = {
+          id: id,
+          run: []
+        };
+        newPathGiven.forEach(function(v) {
           var u = {
-            lat: lat,
-            lng: lng,
-            to: to
+            lat: v.lat(),
+            lng: v.lng()
           };
-          V.push(u);
-          console.log(JSON.stringify(u));
+          newPath.run.push(u);
         });
-        console.log("END --------------");
-        V.forEach(function(v, i, self) {
-          vertices.forEach(function(u, j, self) {
-            if (
+        paths.forEach(function(p) {
+          newPath.run.map(function(u) {
+            p.run.forEach(function(v) {
+              // console.log(JSON.stringify(u), 'vs', JSON.stringify(v));
+              var d = distance(u, v);
+              // console.log(d);
+              if (d < 0.0001) {
+                console.log('d(u,v) = ', d);
+                u.lat = v.lat;
+                u.lng = v.lng;
+              }
+            });
+            return u;
           });
         });
-        var E = [];
-        //for (var i = 0; i < V.length-1; i++) {
-        //  E.push([V[i], V[i+1]]);
-        //  console.log(vtx2str(V[i]), ' <-> ', vtx2str(V[i+1]));
-        //}
-        //var dmin = 999;
-        //paths.pairs(function (pair) {
-        //  var d = Math.sqrt(Math.pow(pair[0].lat()-pair[1].lat(), 2), Math.pow(pair[0].lng()-pair[1].lng(), 2));
-        //  console.log('d = ' + d + ' vs dmin = ' + dmin);
-        //  if (d < dmin) {
-        //    dmin = d;
-        //  }
-        //});
-        //console.log('dmin = ' + dmin);
+        paths.push(newPath);
+        console.log(JSON.stringify(paths));
       }
-
-      var vertices = [];
-      var edges = [];
 
       function initialize() {
         var map = new google.maps.Map(document.getElementById('map'), {
@@ -198,7 +246,7 @@
         // Creates a drawing manager attached to the map that allows the user to draw
         // markers, lines, and shapes.
         drawingManager = new google.maps.drawing.DrawingManager({
-          drawingMode: google.maps.drawing.OverlayType.POLYGON,
+          drawingMode: google.maps.drawing.OverlayType.POLYLINE,
           markerOptions: {
             draggable: true
           },
@@ -212,7 +260,6 @@
         });
 
         google.maps.event.addListener(drawingManager, 'overlaycomplete', function(e) {
-            printVertices(e.overlay.getPath().getArray());
             if (e.type != google.maps.drawing.OverlayType.MARKER) {
             // Switch back to non-drawing mode after drawing a shape.
             drawingManager.setDrawingMode(null);
@@ -221,11 +268,20 @@
             // mouses down on it.
             var newShape = e.overlay;
             newShape.type = e.type;
+            // printVertices(e.overlay.getPath().getArray());
+            var pathArray = newShape.getPath().getArray();
+            var id = JSON.stringify(pathArray).hashCode();
+            updateData(pathArray, id);
             google.maps.event.addListener(newShape, 'click', function() {
               setSelection(newShape);
-                google.maps.event.addListener(newShape, "mouseup", function(e){
-                    printVertices(newShape.getPath().getArray());
-                });
+            });
+            google.maps.event.addListener(newShape, "mouseup", function(e){
+              // printVertices(newShape.getPath().getArray());
+              var i = paths.findIndex(function(p) {
+                return p.id === id;
+              });
+              paths.splice(i, 1);
+              updateData(newShape.getPath().getArray(), id);
             });
             setSelection(newShape);
           }
