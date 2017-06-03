@@ -196,14 +196,21 @@
       // var edges = [];
       var polylines = [];
       var paths = [];
+      var expJSON = '';
+      // function distance(u, v) {
+      //   var p = 0.017453292519943295;    // Math.PI / 180
+      //   var c = Math.cos;
+      //   var a = 0.5 - c((v.lat - u.lat) * p)/2 +
+      //           c(u.lat * p) * c(v.lat * p) *
+      //           (1 - c((v.lng - u.lng) * p))/2;
+      //
+      //   return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
+      // }
       function distance(u, v) {
-        var p = 0.017453292519943295;    // Math.PI / 180
-        var c = Math.cos;
-        var a = 0.5 - c((v.lat - u.lat) * p)/2 +
-                c(u.lat * p) * c(v.lat * p) *
-                (1 - c((v.lng - u.lng) * p))/2;
-
-        return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
+        return google.maps.geometry.spherical.computeDistanceBetween(
+          new google.maps.LatLng(u.lat, u.lng),
+          new google.maps.LatLng(v.lat, v.lng)
+        );
       }
       function veq(u, v) {
         return u.lat === v.lat && u.lng === v.lng;
@@ -227,8 +234,10 @@
               // console.log(JSON.stringify(u), 'vs', JSON.stringify(v));
               var d = distance(u, v);
               // console.log(d);
-              if (d < 0.0001) {
-                console.log('same vertex with d(u,v) = ', d);
+              if (d < 2) {
+                // console.log('same vertex with d(u,v) =', d);
+                // console.log('u =', JSON.stringify(u, null, 2));
+                // console.log('v =', JSON.stringify(v, null, 2));
                 u.lat = v.lat;
                 u.lng = v.lng;
               }
@@ -265,10 +274,15 @@
           for (var i = 0; i < p.run.length-1; i++) {
             var u = p.run[i], v = p.run[i+1];
             var run = [u, v];
+            var d = google.maps.geometry.spherical.computeDistanceBetween(
+                new google.maps.LatLng(u.lat, u.lng),
+                new google.maps.LatLng(v.lat, v.lng));
             var id = (u.id.toString() + v.id.toString()).hashCode();
             var path = {
               id: id,
-              run: run
+              run: run,
+              distance: d,
+              safety: -1
             };
             paths.push(path);
           }
@@ -288,14 +302,11 @@
           return v;
         });
         vertices = maybeVertices;
-        // console.log('vertices =', JSON.stringify(vertices));
-        // console.log('paths = ', JSON.stringify(paths));
-        // console.log('polylines =', JSON.stringify(polylines));
-        console.log(JSON.stringify({
+        expJSON = JSON.stringify({
           vertices: vertices,
           paths: paths,
           polylines: polylines
-        }));
+        }, null, 2);
       }
       function initialize() {
         var map = new google.maps.Map(document.getElementById('map'), {
@@ -319,7 +330,9 @@
             draggable: true
           },
           polylineOptions: {
-            editable: true
+            editable: true,
+            draggable: true,
+            strokeWeight: 5
           },
           rectangleOptions: polyOptions,
           circleOptions: polyOptions,
@@ -329,8 +342,8 @@
 
         google.maps.event.addListener(drawingManager, 'overlaycomplete', function(e) {
             if (e.type != google.maps.drawing.OverlayType.MARKER) {
-            // Switch back to non-drawing mode after drawing a shape.
-            drawingManager.setDrawingMode(null);
+              // Switch back to non-drawing mode after drawing a shape.
+              drawingManager.setDrawingMode(null);
 
             // Add an event listener that selects the newly-drawn shape when the user
             // mouses down on it.
@@ -343,8 +356,18 @@
             google.maps.event.addListener(newShape, 'click', function() {
               setSelection(newShape);
             });
-            google.maps.event.addListener(newShape, "mouseup", function(e){
-              // printVertices(newShape.getPath().getArray());
+            console.log(google.maps.geometry.spherical.computeLength(newShape.getPath().getArray()));
+            google.maps.event.addListener(newShape.getPath(), "insert_at", function(e){
+              // console.log('path inserted');
+              var i = polylines.findIndex(function(p) {
+                return p.id === id;
+              });
+              polylines.splice(i, 1);
+              updateData(newShape.getPath().getArray(), id);
+            });
+            google.maps.event.addListener(newShape.getPath(), "set_at", function(e){
+              console.log('path changed');
+              // console.log(JSON.stringify(e, null, 2));
               var i = polylines.findIndex(function(p) {
                 return p.id === id;
               });
