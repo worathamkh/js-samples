@@ -277,7 +277,9 @@
             var d = google.maps.geometry.spherical.computeDistanceBetween(
                 new google.maps.LatLng(u.lat, u.lng),
                 new google.maps.LatLng(v.lat, v.lng));
-            var id = (u.id.toString() + v.id.toString()).hashCode();
+            // var id = (u.id.toString() + v.id.toString()).hashCode();
+            // need to be commutative
+            var id = (u.id * v.id).toString().hashCode()
             var path = {
               id: id,
               run: run,
