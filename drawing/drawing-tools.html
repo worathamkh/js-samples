@@ -307,6 +307,7 @@
           paths: paths,
           polylines: polylines
         }, null, 2);
+        document.getElementById('output-area').value = expJSON;
       }
       function initialize() {
         var map = new google.maps.Map(document.getElementById('map'), {
@@ -394,6 +395,10 @@
       <div id="color-palette"></div>
       <div>
         <button id="delete-button">Delete Selected Shape</button>
+      </div>
+      <hr>
+      <div>
+        <textarea id="output-area" rows="10" col="7"></textarea>
       </div>
     </div>
     <div id="map"></div>
