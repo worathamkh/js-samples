@@ -141,47 +141,6 @@
       function vtx2str(v) {
         return '(' + v[0] + ', ' + v[1] + ')';
       }
-      // function printVertices(P) {
-      //   var V = [];
-      //   console.log("START ------------");
-      //   P.forEach(function(v, i, self) {
-      //     var lat = v.lat(), lng = v.lng();
-      //     var to = [];
-      //     if (i > 0) {
-      //       to.push(i-1);
-      //     }
-      //     if (i < self.length-1) {
-      //       to.push(i+1);
-      //     }
-      //     var u = {
-      //       lat: lat,
-      //       lng: lng,
-      //       to: to
-      //     };
-      //     V.push(u);
-      //     console.log(JSON.stringify(u));
-      //   });
-      //   console.log("END --------------");
-      //   V.forEach(function(v, i, self) {
-      //     vertices.forEach(function(u, j, self) {
-      //       if (
-      //     });
-      //   });
-      //   var E = [];
-      //   //for (var i = 0; i < V.length-1; i++) {
-      //   //  E.push([V[i], V[i+1]]);
-      //   //  console.log(vtx2str(V[i]), ' <-> ', vtx2str(V[i+1]));
-      //   //}
-      //   //var dmin = 999;
-      //   //paths.pairs(function (pair) {
-      //   //  var d = Math.sqrt(Math.pow(pair[0].lat()-pair[1].lat(), 2), Math.pow(pair[0].lng()-pair[1].lng(), 2));
-      //   //  console.log('d = ' + d + ' vs dmin = ' + dmin);
-      //   //  if (d < dmin) {
-      //   //    dmin = d;
-      //   //  }
-      //   //});
-      //   //console.log('dmin = ' + dmin);
-      // }
       String.prototype.hashCode = function(){
       	var hash = 0;
       	if (this.length == 0) return hash;
@@ -197,15 +156,6 @@
       var polylines = [];
       var paths = [];
       var expJSON = '';
-      // function distance(u, v) {
-      //   var p = 0.017453292519943295;    // Math.PI / 180
-      //   var c = Math.cos;
-      //   var a = 0.5 - c((v.lat - u.lat) * p)/2 +
-      //           c(u.lat * p) * c(v.lat * p) *
-      //           (1 - c((v.lng - u.lng) * p))/2;
-      //
-      //   return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
-      // }
       function distance(u, v) {
         return google.maps.geometry.spherical.computeDistanceBetween(
           new google.maps.LatLng(u.lat, u.lng),
@@ -240,6 +190,7 @@
                 // console.log('v =', JSON.stringify(v, null, 2));
                 u.lat = v.lat;
                 u.lng = v.lng;
+                u.id = v.id;
               }
             });
             return u;
@@ -248,8 +199,8 @@
         polylines.push(newPath);
         var maybeVertices = [];
         polylines.forEach(function(p) {
-          var hit = false;
           for (var i = 0; i < p.run.length; i++) {
+            var hit = false;
             var v = p.run[i];
             // console.log('v =', v);
             // console.log(JSON.stringify(maybeVertices));
@@ -258,9 +209,10 @@
               // console.log('u =', u);
               // var d = distance(u, v);
               // if (d < 0.0001) {
-              if (veq(u, v)) {
+              // if (veq(u, v)) {
+              if (u.id == v.id) {
                 hit = true;
-                console.log('hit!');
+                //console.log('hit!');
                 break;
               }
             }
@@ -284,7 +236,7 @@
               id: id,
               run: run,
               distance: d,
-              safety: -1
+              safety: {}
             };
             paths.push(path);
           }
@@ -293,10 +245,12 @@
           v.adjPaths = [];
           v.adjVertices = [];
           paths.forEach(function(p) {
-            if (veq(v, p.run[0])) {
+            // if (veq(v, p.run[0])) {
+            if (v.id == p.run[0].id) {
               v.adjVertices.push(p.run[1].id);
               v.adjPaths.push(p.id);
-            } else if (veq(v, p.run[1])){
+            // } else if (veq(v, p.run[1])){
+            } else if (v.id == p.run[1].id) {
               v.adjVertices.push(p.run[0].id);
               v.adjPaths.push(p.id);
             }
@@ -309,13 +263,18 @@
           paths: paths,
           polylines: polylines
         }, null, 2);
+        console.log('#vertices =', vertices.length)
+        console.log('#paths =', paths.length)
+        console.log('#polylines =', polylines.length)
         document.getElementById('output-area').value = expJSON;
       }
       function initialize() {
         var map = new google.maps.Map(document.getElementById('map'), {
           zoom: 18,
-          center: new google.maps.LatLng(18.7964991, 98.9526191),
-          mapTypeId: google.maps.MapTypeId.ROADMAP,
+          // center: new google.maps.LatLng(18.7964991, 98.9526191),
+          center: new google.maps.LatLng(14.080352, 100.603294),
+          // mapTypeId: google.maps.MapTypeId.ROADMAP,
+          mapTypeId: google.maps.MapTypeId.HYBRID,
           disableDefaultUI: true,
           zoomControl: true
         });
